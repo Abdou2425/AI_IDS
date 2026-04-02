@@ -9,13 +9,13 @@ from datetime import datetime
 # CONFIG
 # =========================
 TIME_WINDOW       = 10
-ATTEMPT_THRESHOLD = 10
+ATTEMPT_THRESHOLD = 15
 ALERT_COOLDOWN    = 20
 PRUNE_INTERVAL    = 60
-TARGET_PORTS      = {22, 21, 23, 80, 443}
+TARGET_PORTS      = {22, 21, 23}
 WHITELIST         = {"127.0.0.1"}
 LOG_FILE          = "data/bruteforce_logs.jsonl"
-IFACE             = None    # None = auto-detect
+IFACE             = None
 
 # =========================
 # STORAGE
@@ -25,7 +25,7 @@ alerted_ips = {}
 last_prune  = time.time()
 
 # =========================
-# JSONL LOGGER
+# LOGGER
 # =========================
 log_file = open(LOG_FILE, "a")
 atexit.register(log_file.close)
@@ -35,21 +35,15 @@ def log_event(data):
     log_file.flush()
 
 # =========================
-# CLEAN OLD DATA
+# PRIVATE IP CHECK          ← fix 1
 # =========================
-def clean_attempts(ip, now):
-    window = attempts[ip]
-    while window and (now - window[0][1]) > TIME_WINDOW:
-        window.popleft()
-
-# =========================
-# PRUNE STALE IPs
-# =========================
-def prune_stale(now):
-    stale = [ip for ip, dq in attempts.items() if not dq]
-    for ip in stale:
-        del attempts[ip]
-        alerted_ips.pop(ip, None)
+def is_private(ip):
+    if ip.startswith(("192.168.", "10.")):
+        return True
+    parts = ip.split(".")
+    if parts[0] == "172" and 16 <= int(parts[1]) <= 31:
+        return True
+    return False
 
 # =========================
 # FEATURE EXTRACTION
@@ -88,6 +82,23 @@ def extract_features(ip):
     }
 
 # =========================
+# CLEAN OLD DATA
+# =========================
+def clean_attempts(ip, now):
+    window = attempts[ip]
+    while window and (now - window[0][1]) > TIME_WINDOW:
+        window.popleft()
+
+# =========================
+# PRUNE STALE IPs
+# =========================
+def prune_stale(now):
+    stale = [ip for ip, dq in attempts.items() if not dq]
+    for ip in stale:
+        del attempts[ip]
+        alerted_ips.pop(ip, None)
+
+# =========================
 # SEVERITY
 # =========================
 def compute_severity(total_attempts):
@@ -112,6 +123,10 @@ def detect(packet):
     now    = time.time()
 
     if src_ip in WHITELIST:
+        return
+    if src_ip == dst_ip:
+        return
+    if not is_private(dst_ip):          # fix 1
         return
     if dport not in TARGET_PORTS:
         return
@@ -140,7 +155,7 @@ def detect(packet):
         "target_ip" : dst_ip,
         "dport"     : dport,
         "flags"     : flags,
-        "label"     : 0,    # default normal — attacker sets to 1
+        "label"     : 0,                # fix 4
         **features
     })
 
@@ -154,9 +169,19 @@ def detect(packet):
     # =========================
     alert_type = None
 
-    if total_attempts >= ATTEMPT_THRESHOLD and unique_ports <= 2:
+    if (
+        total_attempts >= ATTEMPT_THRESHOLD
+        and unique_ports <= 2
+        and features["syn_ratio"] > 0.6     # kept — strong signal
+                                            # duration < 10 removed — fix 2
+    ):
         alert_type = "BRUTE_FORCE"
-    elif total_attempts >= ATTEMPT_THRESHOLD and port_focus_ratio < 0.4:
+
+    elif (
+        total_attempts >= 20
+        and port_focus_ratio < 0.4
+                                            # duration < 15 removed — fix 2
+    ):
         alert_type = "CREDENTIAL_STUFFING"
 
     if alert_type:
@@ -167,24 +192,25 @@ def detect(packet):
             "source_ip" : src_ip,
             "target_ip" : dst_ip,
             "severity"  : severity,
-            "label"     : 1,
+            "label"     : 1,            # fix 4
             **features
         }
-        print(f"🚨 ALERT [{severity}] [{alert_type}] {src_ip} → {dst_ip} "
-              f"| attempts: {total_attempts} "
-              f"| ports: {unique_ports} "
-              f"| focus: {port_focus_ratio}")
+        print(
+            f"🚨 ALERT [{severity}] [{alert_type}] "
+            f"{src_ip} → {dst_ip} | attempts: {total_attempts} "
+            f"| ports: {unique_ports} | focus: {port_focus_ratio}"
+        )
         log_event(alert)
         alerted_ips[src_ip] = now
 
 # =========================
 # START
 # =========================
-if __name__ == "__main__":
+if __name__ == "__main__":              # fix 3
     port_filter = " or ".join(f"dst port {p}" for p in TARGET_PORTS)
     bpf_filter  = f"tcp and ({port_filter})"
     iface       = IFACE or conf.iface
-    print(f"🚀 BRUTE FORCE / CREDENTIAL STUFFING DETECTION RUNNING on [{iface}]...")
+    print(f"🚀 BRUTE FORCE DETECTOR RUNNING on [{iface}]")
     print(f"   Filter: {bpf_filter}")
     sniff(
         iface=iface,
