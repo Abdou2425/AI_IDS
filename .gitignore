@@ -1,1 +1,7 @@
+data/arp_dataset.jsonl
+data/bruteforce_logs.jsonl
+data/dns_logs.jsonl
+data/icmp_dataset.jsonl
+data/syn_dataset.jsonl
+detectors/__pycache__
 phase1
