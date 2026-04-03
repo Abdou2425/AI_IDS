@@ -6,12 +6,12 @@
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 
 ## 📌 Overview
+
 **AI-IDS** is a network intrusion detection system built in Python using **Scapy** for real-time packet analysis. It combines **rule-based detection** with a **machine learning layer** (coming soon) to identify and alert on a wide range of network attacks.
 
 The system logs every packet as a feature vector to **JSONL datasets**, making it ML-ready from day one. Each detector runs independently or together under a single unified manager.
 
-> ⚠️ **This project is intended for ethical and educational use only.**  
-> Deploy only on networks you own or have explicit permission to monitor.
+This project was developed as part of our **second semester project in the fourth year of Computer Security studies**, reflecting both our practical and theoretical training in cybersecurity.
 
 ---
 
