@@ -1,4 +1,4 @@
-# 🛡️ AI-IDS — Intelligent Intrusion Detection System
+# 🛡️ Intelligent_lDS — Intelligent Intrusion Detection System
 ![Python](https://img.shields.io/badge/Python-14354C?style=for-the-badge&logo=python&logoColor=white)
 ![Scapy](https://img.shields.io/badge/Scapy-2C2D72?style=for-the-badge&logo=python&logoColor=white)
 ![ML](https://img.shields.io/badge/Machine_Learning-FF6F00?style=for-the-badge&logo=scikitlearn&logoColor=white)
