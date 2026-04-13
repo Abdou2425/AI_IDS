@@ -11,8 +11,9 @@
 
 The system logs every packet as a feature vector to **JSONL datasets**, making it ML-ready from day one. Each detector runs independently or together under a single unified manager.
 
-This project was developed as part of our **second semester project in the fourth year of Computer Security studies**, reflecting both our practical and theoretical training in cybersecurity.
+In addition, detected alerts are visualized through an interactive dashboard built with **React**, allowing real-time monitoring and intuitive analysis of network activity.
 
+This project was developed as part of our **second semester project in the fourth year of Computer Security studies**, reflecting both our practical and theoretical training in cybersecurity.
 ---
 
 ## 🎯 Detectors
